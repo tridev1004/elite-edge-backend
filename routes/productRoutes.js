@@ -5,22 +5,9 @@ const validations = require("../middlewares/validations/productValidation");
 const validator = require("../middlewares/validations/validator");
 const controller = require("../controllers/productController");
 const { isAdmin, verifyToken } = require("../middlewares/authMw");
+const upload = require("../utils/cloudinary.config");
 
 const router = express.Router();
-
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    if (file && !file.mimetype.startsWith("image")) {
-      callback(new Error("invalid image type"));
-      return;
-    }
-    callback(null, "./uploads/products/");
-  },
-  filename: (req, file, callback) => {
-    callback(null, file.originalname);
-  },
-});
-const upload = multer({ storage });
 
 router
   .route("/products")
@@ -28,7 +15,7 @@ router
   .post(
     verifyToken,
     isAdmin,
-    upload.array("images"),
+    upload.array("images", 5),
     validations.postValidation,
     validator,
     controller.addProduct
@@ -36,7 +23,7 @@ router
   .patch(
     verifyToken,
     isAdmin,
-    upload.array("images"),
+    upload.single("images"),
     validations.updateValidation,
     validator,
     controller.updateProduct

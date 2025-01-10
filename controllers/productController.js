@@ -8,6 +8,7 @@ const Category = mongoose.model("categories");
 const { getDataOfPage } = require("./paginationController");
 
 const dataPerPage = 12;
+const cloudinary = require('cloudinary').v2;
 
 module.exports.getAllProducts = (req, res, next) => {
   const filter = {};
@@ -117,41 +118,68 @@ module.exports.searchForProduct = (req, res, next) => {
     .catch((error) => next(error));
 };
 
-module.exports.addProduct = (req, res, next) => {
-  const imagesArr = req.files.map((img) => {
-    return { src: img.path };
-  });
-  let object = new Product({
-    name: req.body.name,
-    description: req.body.description,
-    price: req.body.price,
-    images: imagesArr,
-    colors: req.body.colors.map((ele) => JSON.parse(ele)),
-    discount: req.body.discount,
-    category: req.body.category,
-    brand: req.body.brand,
-  });
-  object
-    .save()
-    .then((data) => {
-      // Add product to brand
-      Brand.updateOne({ _id: data.brand }, { $push: { products: data._id } })
-        .then(() => true)
-        .catch((error) => next(error));
-      // Add product to category
-      Category.updateOne(
-        { _id: data.category },
-        { $push: { products_id: data._id } }
+module.exports.addProduct = async (req, res, next) => {
+  try {
+    console.log(req.files)
+    console.log(req.body)
+    // Validate if files exist
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No images provided for upload." });
+    }
+
+    // Upload images to Cloudinary
+    const uploadedImages = await Promise.all(
+      req.files.map((file) =>
+        cloudinary.uploader.upload(file.path, { folder: "products" })
       )
-        .then(() => true)
-        .catch((error) => next(error));
-      return data;
-    })
-    .then((data) => {
-      res.status(201).json(data);
-    })
-    .catch((error) => next(error));
+    );
+
+    // Extract Cloudinary URLs
+    const imagesArr = uploadedImages.map((img) => ({
+      src: img.secure_url,
+      public_id: img.public_id, // Save public_id for easier management (deletion, updates)
+    }));
+
+    // Parse colors if provided
+    const colors = req.body.colors
+      ? req.body.colors.map((color) =>
+          typeof color === "string" ? JSON.parse(color) : color
+        )
+      : [];
+
+    // Create the product object
+    const product = new Product({
+      name: req.body.name,
+      description: req.body.description,
+      price: req.body.price,
+      images: imagesArr,
+      colors,
+      discount: req.body.discount || 0,
+      category: req.body.category,
+      brand: req.body.brand,
+    });
+
+    // Save product to the database
+    const savedProduct = await product.save();
+
+    // Add product to brand and category
+    await Brand.updateOne(
+      { _id: savedProduct.brand },
+      { $push: { products: savedProduct._id } }
+    );
+    await Category.updateOne(
+      { _id: savedProduct.category },
+      { $push: { products_id: savedProduct._id } }
+    );
+
+    // Return success response
+    res.status(201).json({ message: "Product added successfully", product: savedProduct });
+  } catch (error) {
+    console.error("Error adding product:", error);
+    next(error); // Pass errors to error-handling middleware
+  }
 };
+
 
 module.exports.updateProduct = (req, res, next) => {
   let imagesArr;
