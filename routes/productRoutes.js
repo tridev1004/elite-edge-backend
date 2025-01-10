@@ -46,4 +46,7 @@ router
   .route("/products/:id")
   .get(validations.idValidation, validator, controller.getProductById);
 
+
+
+  
 module.exports = router;
