@@ -3,6 +3,8 @@ require("../models/categorySchema");
 
 const { getDataOfPage } = require("./paginationController");
 const Category = mongoose.model("categories");
+const cloudinary = require('cloudinary').v2;
+
 
 module.exports.getAllCategory = (request, response, next) => {
     Category.find({})
@@ -33,14 +35,33 @@ module.exports.getCategoryById = (request, response, next) => {
         .catch((error) => next(error));
 }
 
-module.exports.addCategory = (request, response, next) => {
+module.exports.addCategory =async (req, res, next) => {
+
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: "No images provided for upload." });
+      }
+      
+    
+      const uploadedImages = await Promise.all(
+        req.files.map((file) =>
+          cloudinary.uploader.upload(file.path, { folder: "category" })
+        )
+      );
+    
+      // Extract Cloudinary URLs
+      const imagesArr = uploadedImages.map((img) => ({
+        src: img.secure_url,
+        public_id: img.public_id, // Save public_id for easier management (deletion, updates)
+      }));
+    
+
     let object = new Category({
-        name: request.body.name,
-        image: request.file.path
+        name: req.body.name,
+        image:imagesArr
     });
     object.save()
         .then(data => {
-            response.status(201).json(data)
+            res.status(201).json(data)
         }).catch(error => next(error));
 }
 

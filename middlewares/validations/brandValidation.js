@@ -1,16 +1,10 @@
 const { body, param, check ,query} = require("express-validator");
 
-const validateUploadedImages = (value, { req }) => {
-  if (!req.file || !req.file.mimetype.startsWith("image/")) {
-    throw new Error("Invalid image file type");
-  }
-  return true;
-};
+
 
 module.exports.postValidation = [
   body("name").isString().withMessage("Brand name must be string"),
   body("category").isString().withMessage("Brand category must be string"),
-  check("image").custom(validateUploadedImages),
 ];
 
 module.exports.updateValidation = [
@@ -20,7 +14,6 @@ module.exports.updateValidation = [
     .optional()
     .isString()
     .withMessage("Brand category must be string"),
-  check("image").optional().custom(validateUploadedImages),
 ];
 
 module.exports.deleteValidation = [

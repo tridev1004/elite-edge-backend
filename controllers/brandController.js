@@ -4,6 +4,7 @@ require("../models/brandSchema");
 const { getDataOfPage } = require("./paginationController");
 
 const Brand = mongoose.model("brands");
+const cloudinary = require('cloudinary').v2;
 
 module.exports.getAllBrands = (req, res, next) => {
   Brand.find({})
@@ -57,11 +58,33 @@ module.exports.getBrandCategoryProducts = (req, res, next) => {
     .catch((error) => next(error));
 };
 
-module.exports.addBrand = (req, res, next) => {
+module.exports.addBrand =async (req, res, next) => {
+  
+
+  console.log(req.files)
+  console.log(req.body)
+  // Validate if files exist
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "No images provided for upload." });
+  }
+  
+
+  const uploadedImages = await Promise.all(
+    req.files.map((file) =>
+      cloudinary.uploader.upload(file.path, { folder: "brands" })
+    )
+  );
+
+  // Extract Cloudinary URLs
+  const imagesArr = uploadedImages.map((img) => ({
+    src: img.secure_url,
+    public_id: img.public_id, // Save public_id for easier management (deletion, updates)
+  }));
+
   let object = new Brand({
     name: req.body.name,
     category: req.body.category,
-    image: req.file.path,
+    image: imagesArr,
     products: req.body.products || [],
   });
   object
