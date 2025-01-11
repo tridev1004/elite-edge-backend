@@ -5,22 +5,11 @@ const validations = require("../middlewares/validations/brandValidation");
 const validator = require("../middlewares/validations/validator");
 const controller = require("../controllers/brandController");
 const { isAdmin, verifyToken } = require("../middlewares/authMw");
+const upload = require("../utils/cloudinary.config");
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    if (file && !file.mimetype.startsWith("image")) {
-      callback(new Error("invalid image type"));
-      return;
-    }
-    callback(null, "./uploads/brands/");
-  },
-  filename: (req, file, callback) => {
-    callback(null, file.originalname);
-  },
-});
-const upload = multer({ storage });
+
 
 router
   .route("/brands")
@@ -28,7 +17,7 @@ router
   .post(
     verifyToken,
     isAdmin,
-    upload.single("image"),
+    upload.array("image",5),
     validations.postValidation,
     validator,
     controller.addBrand

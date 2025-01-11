@@ -14,10 +14,12 @@ const schema = new mongoose.Schema({
         ref:'products',
         default:[]
     },
-    image:{
-        type:String,
-        required: true
-    },
+    image: [
+        {
+          src: { type: String, required: true },
+          public_id: { type: String, required: true },
+        },
+      ],
 })
 
 mongoose.model("categories",schema);
