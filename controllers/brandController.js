@@ -96,17 +96,70 @@ module.exports.addBrand =async (req, res, next) => {
     .catch((error) => next(error));
 };
 
-module.exports.updateBrand = (req, res, next) => {
-  Brand.updateOne(
-    { _id: req.body._id },
-    { $set: req.file ? { ...req.body, image: req.file.path } : req.body }
-  )
-    .then(() => Brand.find({}))
-    .then((data) => {
-      res.status(200).json(data);
-    })
-    .catch((error) => next(error));
+module.exports.updateBrand = async (req, res, next) => {
+  try {
+    // Find the brand to update
+    const brand = await Brand.findById(req.body._id).exec();
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found" });
+    }
+
+    // Initialize new images array
+    let imagesArr = [];
+
+    // If new images are provided
+    if (req.files && req.files.length > 0) {
+      // Upload new images to Cloudinary
+      const uploadedImages = await Promise.all(
+        req.files.map((file) =>
+          cloudinary.uploader.upload(file.path, { folder: "brands" })
+        )
+      );
+
+      // Extract Cloudinary URLs
+      imagesArr = uploadedImages.map((img) => ({
+        src: img.secure_url,
+        public_id: img.public_id, // Save public_id for easier management
+      }));
+
+      // Delete old images from Cloudinary
+      await Promise.all(
+        brand.image.map((img) =>
+          cloudinary.uploader.destroy(img.public_id).catch((err) => {
+            console.error("Failed to delete old image:", img.public_id, err);
+          })
+        )
+      );
+    } else {
+      // Retain old images if no new images are uploaded
+      if (req.body.image) {
+        imagesArr = Array.isArray(req.body.image)
+          ? req.body.image.map((img) =>
+              typeof img === "string" ? JSON.parse(img) : img
+            )
+          : [typeof req.body.image === "string" ? JSON.parse(req.body.image) : req.body.image];
+      } else {
+        imagesArr = brand.image; // Default to existing images if none are provided
+      }
+    }
+
+    // Update the brand
+    const updatedBrand = await Brand.findByIdAndUpdate(
+      req.body._id,
+      {
+        ...req.body,
+        image: imagesArr,
+      },
+      { new: true }
+    );
+
+    res.status(200).json({ message: "Brand updated successfully", brand: updatedBrand });
+  } catch (error) {
+    console.error("Error updating brand:", error);
+    next(error); // Pass errors to the error-handling middleware
+  }
 };
+
 
 module.exports.deleteBrand = (req, res, next) => {
   Brand.deleteOne({ _id: req.params.id })
