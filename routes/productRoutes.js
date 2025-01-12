@@ -23,7 +23,7 @@ router
   .patch(
     verifyToken,
     isAdmin,
-    upload.single("images"),
+    upload.array("images"),
     validations.updateValidation,
     validator,
     controller.updateProduct
