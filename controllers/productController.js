@@ -180,80 +180,94 @@ module.exports.addProduct = async (req, res, next) => {
   }
 };
 
+module.exports.updateProduct = async (req, res, next) => {
+  try {
+    // Parse colors if provided
+    const colors = Array.isArray(req.body.colors)
+      ? req.body.colors
+      : req.body.colors
+      ? [req.body.colors]
+      : [];
+    const parsedColors = colors.map((obj) =>
+      typeof obj === "object" ? obj : JSON.parse(obj)
+    );
 
-module.exports.updateProduct = (req, res, next) => {
-  let imagesArr;
-  if (req.files) {
-    imagesArr = req.files.map((img) => {
-      return { src: img.path };
-    });
-  }
-  const parsedColors = req.body.colors.map((obj) =>
-    typeof obj === "object" ? obj : JSON.parse(obj)
-  );
-  Product.findOne({ _id: req.body._id }, { category: 1, brand: 1, images: 1 })
-    .then((obj) => {
-      // check if brand was updated
-      if (req.body.brand) {
-        // remove product from old brand
-        Brand.updateOne({ _id: obj.brand }, { $pull: { products: obj._id } })
-          .then(() => true)
-          .catch((error) => next(error));
-        // add product to updated brand
-        Brand.updateOne(
-          { _id: req.body.brand },
-          { $push: { products: obj._id } }
+    // Initialize new images array
+    let imagesArr = [];
+
+    // Find the product to update
+    const product = await Product.findById(req.body._id).exec();
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // If new images are provided
+    if (req.files && req.files.length > 0) {
+      // Upload new images to Cloudinary
+      const uploadedImages = await Promise.all(
+        req.files.map((file) =>
+          cloudinary.uploader.upload(file.path, { folder: "products" })
         )
-          .then(() => true)
-          .catch((error) => next(error));
-      }
-      // check if category was updated
-      if (req.body.category) {
-        // remove product from old category
-        Category.updateOne(
-          { _id: obj.category },
-          { $pull: { products_id: obj._id } }
-        )
-          .then(() => true)
-          .catch((error) => next(error));
-        // add product to updated category
-        Category.updateOne(
-          { _id: req.body.category },
-          { $push: { products_id: obj._id } }
-        )
-          .then(() => true)
-          .catch((error) => next(error));
-      }
-      // check if old images were modified
-      if (req.body.images) {
-        if (Array.isArray(req.body.images)) {
-          const updatedImages = obj.images.filter((oldImg) => {
-            return (
-              req.body.images.findIndex(
-                (img) => JSON.parse(img)._id == oldImg._id
-              ) !== -1
-            );
-          });
-          imagesArr.push(...updatedImages);
-        } else {
-          const oldImg = obj.images.find(
-            (ele) => ele._id == JSON.parse(req.body.images)._id
-          );
-          imagesArr.push(oldImg);
-        }
-      }
-      return Product.updateOne(
-        { _id: req.body._id },
-        {
-          $set: imagesArr
-            ? { ...req.body, images: imagesArr, colors: parsedColors }
-            : { ...req.body, colors: parsedColors },
-        }
       );
-    })
-    .then((obj) => res.status(200).json(obj))
-    .catch((error) => next(error));
+
+      // Extract Cloudinary URLs
+      imagesArr = uploadedImages.map((img) => ({
+        src: img.secure_url,
+        public_id: img.public_id, // Save public_id for easier management
+      }));
+
+      // Delete old images from Cloudinary
+      await Promise.all(
+        product.images.map((img) =>
+          cloudinary.uploader.destroy(img.public_id).catch((err) => {
+            console.error("Failed to delete old image:", img.public_id, err);
+          })
+        )
+      );
+    } else {
+      // Retain old images if no new images are uploaded
+      if (req.body.images) {
+        imagesArr = Array.isArray(req.body.images)
+          ? req.body.images.map((img) =>
+              typeof img === "string" ? JSON.parse(img) : img
+            )
+          : [typeof req.body.images === "string" ? JSON.parse(req.body.images) : req.body.images];
+      } else {
+        imagesArr = product.images; // Default to existing images if none are provided
+      }
+    }
+
+    // If brand is updated
+    if (req.body.brand && req.body.brand !== product.brand.toString()) {
+      await Brand.updateOne({ _id: product.brand }, { $pull: { products: product._id } });
+      await Brand.updateOne({ _id: req.body.brand }, { $push: { products: product._id } });
+    }
+
+    // If category is updated
+    if (req.body.category && req.body.category !== product.category.toString()) {
+      await Category.updateOne({ _id: product.category }, { $pull: { products_id: product._id } });
+      await Category.updateOne({ _id: req.body.category }, { $push: { products_id: product._id } });
+    }
+
+    // Update the product
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.body._id,
+      {
+        ...req.body,
+        images: imagesArr,
+        colors: parsedColors,
+      },
+      { new: true }
+    );
+
+    res.status(200).json({ message: "Product updated successfully", product: updatedProduct });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    next(error); // Pass errors to the error-handling middleware
+  }
 };
+
+
 
 module.exports.deleteProduct = (req, res, next) => {
   Brand.updateOne(
