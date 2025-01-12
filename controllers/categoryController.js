@@ -65,19 +65,58 @@ module.exports.addCategory =async (req, res, next) => {
         }).catch(error => next(error));
 }
 
-module.exports.updateCategory = (request, response, next) => {
-    const imagePath = request.file ? request.file.path : request.data;
-    Category.updateOne({ _id: request.body.id },
-        {
-            $set: {
-                name: request.body.name,
-                image: imagePath
-            }
-        })
-        .then((data) => {
-            response.status(200).json(data);
-        }).catch((error) => next(error))
-}
+module.exports.updateCategory = async (req, res, next) => {
+  try {
+    // Find the category to update
+    const category = await Category.findById(req.body.id).exec();
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    let imagePath;
+
+    // If a new image is provided
+    if (req.file) {
+      // Upload the new image to Cloudinary
+      const uploadedImage = await cloudinary.uploader.upload(req.file.path, {
+        folder: "categories",
+      });
+
+      imagePath = {
+        src: uploadedImage.secure_url,
+        public_id: uploadedImage.public_id,
+      };
+
+      // Delete the old image from Cloudinary if it exists
+      if (category.image && category.image.public_id) {
+        await cloudinary.uploader.destroy(category.image.public_id).catch((err) => {
+          console.error("Failed to delete old image:", category.image.public_id, err);
+        });
+      }
+    } else {
+      // Retain the old image if no new image is uploaded
+      imagePath = category.image;
+    }
+
+    // Update the category with new data
+    const updatedCategory = await Category.findByIdAndUpdate(
+      req.body.id,
+      {
+        name: req.body.name,
+        image: imagePath,
+      },
+      { new: true } // Return the updated document
+    );
+
+    res.status(200).json({
+      message: "Category updated successfully",
+      category: updatedCategory,
+    });
+  } catch (error) {
+    console.error("Error updating category:", error);
+    next(error); // Pass errors to the error-handling middleware
+  }
+};
 
 module.exports.deleteCategory = (request, response, next) => {
     Category.findOne({ _id: request.body.id })
