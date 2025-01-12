@@ -15,7 +15,7 @@
 
 [EliteEdge](https://EliteEdge-frontend.vercel.app) is a MERN fullstack furniture Ecommerce project that has the following features:
 
-- Regiseteration / logging-in system
+- Registeration / logging-in system
 - Shopping cart
 - Product details
 - Checkout process
@@ -25,14 +25,11 @@
 - Filter products by price, categoty and brand
 - Contact form
 
-### Screenshot
-
-![](./uploads/readme-screenshot.png)
 
 ### Links
 
 - live site: [link](https://EliteEdge-frontend.vercel.app)
-- frontend repo: [link](https://github.com/EliteEdge-team/EliteEdge-frontend)
+- frontend repo: [link](https://github.com/tridev1004/elite-edge-frontend)
 
 ## Our process
 
@@ -67,11 +64,4 @@
 - Retrieve password option
 - Loggin in / registering using google account
 
-## Author
 
-EliteEdge is an ITI graduation project built by a team of 4 aspiring developers:
-
-- [Aya Mohamed](https://github.com/Aya-Saeed261)
-- [Amal Halim](https://github.com/amallhalim)
-- [Mariam Abdallah](https://github.com/mariam-abdallah)
-- [Safaa Ibrahim](https://github.com/Safaa-Ebrahim)
