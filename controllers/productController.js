@@ -10,58 +10,64 @@ const { getDataOfPage } = require("./paginationController");
 const dataPerPage = 12;
 const cloudinary = require('cloudinary').v2;
 
-module.exports.getAllProducts = (req, res, next) => {
-  const filter = {};
-  const sorting = {};
-  const minMaxPricesFilter = {};
-  if (req.query.price && req.query.price != 0) {
-    filter.price = { $lte: +req.query.price };
+module.exports.getAllProducts = async (req, res, next) => {
+  try {
+    const filter = {};
+    const sorting = {};
+    const minMaxPricesFilter = {};
+
+    if (req.query.brand && req.query.brand !== "all") {
+      filter.brand = req.query.brand;
+      minMaxPricesFilter.brand = req.query.brand;
+    }
+    if (req.query.category && req.query.category !== "all") {
+      filter.category = req.query.category;
+      minMaxPricesFilter.category = req.query.category;
+    }
+
+    const sortDirection = req.query.sort && (req.query.sort == -1 || req.query.sort == 1) ? Number(req.query.sort) : null;
+    if (sortDirection) {
+      sorting.discountedPrice = sortDirection;
+    }
+
+    // Fetch products and calculate discounted price
+    const products = await Product.find(filter).lean(); // `.lean()` for better performance
+    const productsWithDiscount = products.map((product) => {
+      const discountedPrice = product.price - (product.price * product.discount) / 100;
+      return { ...product, discountedPrice };
+    });
+
+    // Filter by price (discounted price)
+    let filteredProducts = productsWithDiscount;
+    if (req.query.price && req.query.price != 0) {
+      filteredProducts = filteredProducts.filter((product) => product.discountedPrice <= +req.query.price);
+    }
+
+    // Sort by discounted price
+    if (sortDirection) {
+      filteredProducts.sort((a, b) => (a.discountedPrice - b.discountedPrice) * sortDirection);
+    }
+
+    // Pagination
+    const page = req.query.page ? req.query.page : 1;
+    const { totalPages, pageData } = getDataOfPage(filteredProducts, page, dataPerPage);
+
+    // Calculate min and max prices
+    const discountedPrices = filteredProducts.map((product) => product.discountedPrice);
+    const minPrice = Math.min(...discountedPrices);
+    const maxPrice = Math.max(...discountedPrices);
+
+    res.status(200).json({
+      data: pageData,
+      totalPages,
+      minPrice,
+      maxPrice,
+    });
+  } catch (error) {
+    next(error);
   }
-  if (req.query.brand && req.query.brand !== "all") {
-    filter.brand = req.query.brand;
-    minMaxPricesFilter.brand = req.query.brand;
-  }
-  if (req.query.category && req.query.category !== "all") {
-    filter.category = req.query.category;
-    minMaxPricesFilter.category = req.query.category;
-  }
-  if (req.query.sort && (req.query.sort == -1 || req.query.sort == 1)) {
-    sorting.price = Number(req.query.sort);
-  }
-  Product.find(filter)
-    .sort(sorting)
-    .then(async (data) => {
-      let maxPrice, minPrice;
-      // handle pagination
-      const page = req.query.page ? req.query.page : 1;
-      const { totalPages, pageData } = getDataOfPage(data, page, dataPerPage);
-      // handle max and min price of products
-      if (req.query.sort === 1) {
-        minPrice = data[0];
-        maxPrice = data[data.length - 1];
-      } else if (req.query.sort === -1) {
-        maxPrice = data[0];
-        minPrice = data[data.length - 1];
-      } else {
-        [minPrice, maxPrice] = await Product.find(minMaxPricesFilter, {
-          price: 1,
-        })
-          .sort({ price: 1 })
-          .then((data) => [
-            data[0] ? data[0].price : 0,
-            data[0] ? data[data.length - 1].price : 0,
-          ])
-          .catch((error) => next(error));
-      }
-      res.status(200).json({
-        data: pageData,
-        totalPages,
-        minPrice,
-        maxPrice,
-      });
-    })
-    .catch((error) => next(error));
 };
+
 
 module.exports.getDashboardProducts = (req, res, next) => {
   Product.find()
