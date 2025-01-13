@@ -30,6 +30,7 @@ router
 router
     .route("/users/:id/orders").get(authMW.verifyToken,authMW.isUserOfIdOrAdmin,validations.idValidation,validator,controller.getUserOrders) 
 
+    router.route("/user-get/:userId").get(controller.getUser)
 
 module.exports = router;
 
