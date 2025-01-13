@@ -204,3 +204,15 @@ module.exports.getAllUsersOrders = (request, response, next) => {
     })
     .catch((error) => next(error));
 };
+
+
+module.exports.getUser = (request, response, next) => {
+  User.findOne({ _id: request.params.userId })
+    .then((object) => {
+      if (object == null) {
+        throw new Error("user isn't found");
+      }
+      response.status(200).json(object);
+    })
+    .catch((error) => next(error));
+};
