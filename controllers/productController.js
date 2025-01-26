@@ -50,7 +50,7 @@ module.exports.getAllProducts = async (req, res, next) => {
 
     // Pagination
     const page = req.query.page ? req.query.page : 1;
-    const { totalPages, pageData } = getDataOfPage(filteredProducts, page, dataPerPage);
+    const { totalPages, pageData } = getDataOfPage(filteredProducts, page, 40);
 
     // Calculate min and max prices
     const discountedPrices = filteredProducts.map((product) => product.discountedPrice);
