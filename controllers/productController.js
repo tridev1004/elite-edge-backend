@@ -126,8 +126,7 @@ module.exports.searchForProduct = (req, res, next) => {
 
 module.exports.addProduct = async (req, res, next) => {
   try {
-    console.log(req.files)
-    console.log(req.body)
+   
     // Validate if files exist
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No images provided for upload." });

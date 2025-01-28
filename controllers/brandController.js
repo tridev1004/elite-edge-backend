@@ -61,8 +61,7 @@ module.exports.getBrandCategoryProducts = (req, res, next) => {
 module.exports.addBrand =async (req, res, next) => {
   
 
-  console.log(req.files)
-  console.log(req.body)
+
   // Validate if files exist
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ message: "No images provided for upload." });

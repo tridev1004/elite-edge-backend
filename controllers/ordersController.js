@@ -130,9 +130,7 @@ exports.deleteSingleOrders = (req, res, next) => {
         { _id: Order.userId },
         { $pull: { order: Order._id } }
       )
-        .then(data => {
-          // console.log(data);
-        })
+      
         .catch(error => {
           return Promise.reject(
             new Error(`error delete order from user ${error.message}`)
