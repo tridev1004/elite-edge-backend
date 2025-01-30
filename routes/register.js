@@ -7,4 +7,6 @@ console.log("register route");
 const router = express.Router();
 router.route("/register").post(validation, validator, register);
 
+
+
 module.exports = router;
