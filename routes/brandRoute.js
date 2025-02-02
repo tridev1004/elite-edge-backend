@@ -29,6 +29,7 @@ router
     validations.updateValidation,
     validator,
     controller.updateBrand
+    
   );
 router
   .route("/brands/search")
