@@ -28,7 +28,6 @@ mongoose
       console.log("Up and listening to port", port);
     });
   })
-  .catch((error) => console.log("Error in DB " + error));
 
 // Middleware
 server.use(cors({ credentials: true, origin: "*" }));
