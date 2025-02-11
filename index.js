@@ -34,7 +34,6 @@ server.use(cors({ credentials: true, origin: "*" }));
 server.use(morgan("short"));
 server.use(express.json());
 
-// Add routes from the second file
 server.get("/api", (req, res) => {
   const path = `/api/item/${v4()}`;
   res.setHeader("Content-Type", "text/html");
