@@ -6,6 +6,4 @@ const validator = require("../middlewares/validations/validator");
 const router = express.Router();
 router.route("/register").post(validation, validator, register);
 
-
-
 module.exports = router;
